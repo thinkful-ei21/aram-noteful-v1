@@ -1,43 +1,45 @@
 'use strict';
 
 const express = require('express');
+const morgan = require('morgan');
 
-const data = require('./db/notes');
+const { PORT } = require('./config');
+const notesRouter = require('./routes/notes.router');
 
+// Create an Express application
 const app = express();
 
-// ADD STATIC SERVER HERE
+// Log all requests
+app.use(morgan('dev'));
 
-//Pull files from public and push to DOM
+// Create a static webserver
 app.use(express.static('public'));
 
-//Endpoint to return a list of notes
-app.get('/api/notes', (req, res) => {
+// Parse request body
+app.use(express.json());
 
-  const searchTerm = req.query.searchTerm;
-  if (searchTerm) {
-    let filteredList = data.filter(function (item) {
-      return item.title.includes(searchTerm);
-    });
-    res.json(filteredList);
-  } else {
-    res.json(data);
-  }
+// Mount router on "/api"
+app.use('/api', notesRouter);
 
+// Catch-all 404
+app.use(function (req, res, next) {
+  const err = new Error('Not Found');
+  err.status = 404;
+  next(err);
 });
 
-app.get('/api/notes/:id', (req, res) => {
-  const id = req.params.id;
-
-
-  let note = data.find(function (item) {
-    return item.id === Number(id);
+// Catch-all Error handler
+// NOTE: we'll prevent stacktrace leak in later exercise
+app.use(function (err, req, res, next) {
+  res.status(err.status || 500);
+  res.json({
+    message: err.message,
+    error: err
   });
-  res.json(note);
-
 });
 
-app.listen(8080, function () {
+// Listen for incoming connections
+app.listen(PORT, function () {
   console.info(`Server listening on ${this.address().port}`);
 }).on('error', err => {
   console.error(err);
